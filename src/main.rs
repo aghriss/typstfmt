@@ -26,6 +26,7 @@ Options:
         --verbose                   increase verbosity for non errors
         -v, --version               Prints the current version.
         -h, --help                  Prints this help.
+        -c, --config FILE           specify the path to the config file, defaults to typstfmt.toml
         --get-global-config-path    Prints the path of the global configuration file.
         -C, --make-default-config   Create a default config file at typstfmt.toml
 "#;
@@ -142,6 +143,7 @@ fn main() -> Result<(), lexopt::Error> {
     let mut parser = lexopt::Parser::from_env();
     let mut inputs = Inputs::Stdin;
     let mut output = Output::None;
+    let mut config_file: OsString = CONFIG_FILE_NAME.into();
     let mut verbose = false;
     while let Some(arg) = parser.next()? {
         match arg {
@@ -194,6 +196,9 @@ fn main() -> Result<(), lexopt::Error> {
                     Output::File(value)
                 };
             }
+            Long("config") | Short('c') => {
+                config_file = parser.value()?;
+            }
             Long("verbose") => {
                 verbose = true;
             }
@@ -213,15 +218,20 @@ fn main() -> Result<(), lexopt::Error> {
     }
 
     let config = {
-        if let Ok(mut f) = File::options().read(true).open(CONFIG_FILE_NAME) {
+        if let Ok(mut f) = File::options().read(true).open(config_file.clone()) {
+            if verbose {
+                println!("Using the config file {config_file:?}");
+            }
             let mut buf = String::default();
-            f.read_to_string(&mut buf).unwrap_or_else(|err| {
-                panic!("Failed to read config file {CONFIG_FILE_NAME:?}: {err}")
-            });
+            f.read_to_string(&mut buf)
+                .unwrap_or_else(|err| panic!("Failed to read config file {config_file:?}: {err}"));
             Config::from_toml(&buf).unwrap_or_else(|e| panic!("Config file invalid: {e}.\nYou'll maybe have to delete it and use -C to create a default config file."))
         } else {
             let config_path = confy::get_configuration_file_path("typstfmt", None)
                 .unwrap_or_else(|e| panic!("Error loading global configuration file: {e}"));
+            if verbose {
+                println!("Using the config file {config_path:?}");
+            }
             confy::load("typstfmt", None).unwrap_or_else(|e| {
                 panic!(
                     "Error loading global configuration file at {}: {e}",

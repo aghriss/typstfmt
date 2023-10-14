@@ -5,6 +5,8 @@ Basic formatter for the Typst language with a future!
 - [State](#state)
 - [Installing](#installing)
   - [Setting up a pre-commit hook](#setting-up-a-pre-commit-hook)
+- [Usage](#Usage)
+  - [Neovim](#neovim-integration)
 - [Contributing](#contributing)
 - [Architecture](#architecture)
   - [Main logic](#main-logic)
@@ -31,7 +33,7 @@ Basic formatter for the Typst language with a future!
 - Config file: run `typstfmt --make-default-config` to create a typstfmt.toml
   file that you can customize!
 - Disable the formatting by surrounding code with `// typstfmt::off` and `//
-  typstfmt::on`.
+typstfmt::on`.
 
 # State
 
@@ -73,6 +75,62 @@ pre-commit autoupdate
 ```
 
 And your set up is done!
+
+# Usage
+
+`typstfmt` will use the config files in the following order:
+
+- `./typstfmt.toml`
+- path given by `typstfmt --get-global-config-path`
+- the default config (it can be generated using `-C`)
+
+## Terminal:
+
+```bash
+# generate typstfmt.toml config file in current
+typstfmt -C .
+# override the file if not formatted
+typstfmt main.typ
+# output the formatted file to stdout
+typstfmt -o - main.typ
+# use custom config fie
+typstfmt -c ~/assets/typst.toml main.typ
+```
+
+## Neovim Integration
+
+`null-ls` has been archived, but you can still add formatters manually:
+You can use typstfmt by adding the formatter bellow to `null-ls` options.
+Make sure that Nvim/Vim recognizes `typst` filetype (via `ftdetect`).
+
+```lua
+local h = require("null-ls.helpers")
+local methods = require("null-ls.methods")
+opts = {
+  sources = {
+   ...,
+    h.make_builtin({
+      name = "typstfmt",
+      meta = {
+        url = "https://github.com/astrale-sharp/typstfmt/",
+        description = "Basic formatter for the Typst language with a future!",
+      },
+      method = methods.internal.FORMATTING,
+      filetypes = { "typst" },
+      generator_opts = {
+        command = "typstfmt",
+        args = {
+            "--output", "-"
+         -- path to config file
+         -- "--config", vim.fn.stdpath("config") .. "/assets/typstfmt.toml",
+         },
+        to_stdin = true,
+      },
+      factory = h.formatter_factory,
+    }),
+  }
+}
+```
 
 # Contributing
 
